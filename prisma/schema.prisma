@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  fullName  String?
+  phone     String?
+  password  String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  fee         Float
+  total       Float
+  status      String   @default("PENDING")
+  
+  // These are optional so a deal can be created before the partner joins
+  buyerId     String?  
+  sellerId    String?  
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
