@@ -1,10 +1,10 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma"; // Hakikisha njia hii ipo sahihi kulingana na mradi wako
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
-// NENO 'export' HAPA CHINI NDILO LILILOKUWA LINAKOSEKANA
-export const authOptions: NextAuthOptions = {
+// Tumeondoa neno "export" hapa mwanzo
+const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -17,7 +17,6 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Tafadhali jaza email na neno la siri.");
         }
 
-        // Mtafute mtumiaji kwenye Database
         const user = await prisma.user.findUnique({
           where: { email: credentials.email }
         });
@@ -26,14 +25,12 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Akaunti haijapatikana.");
         }
 
-        // Linganisha neno la siri
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
           throw new Error("Neno la siri sio sahihi.");
         }
 
-        // Kama kila kitu kipo sawa, rudisha taarifa za mtumiaji kwenye session
         return {
           id: user.id,
           email: user.email,
@@ -45,7 +42,7 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // Siku 30
+    maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -72,4 +69,5 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
+// Hii ndiyo pekee inayoruhusiwa ku-ebiwa (Exported) kwenye route.ts
 export { handler as GET, handler as POST };

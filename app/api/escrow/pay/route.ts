@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { auth } from "@/lib/auth"; // <--- Tunatumia njia hii safi badala ya authOptions
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
     // 1. Hakikisha mtumiaji amesha-login
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user?.email) {
       return NextResponse.json(
@@ -66,8 +65,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 7. FANYA MALIPO (Hapa ndipo API za Selcom/Mpesa zingeingia)
-    // Kwa sasa tunafanya malipo yamefanikiwa na kubadili status kuwa PAID
+    // 7. FANYA MALIPO (Badilisha status kuwa PAID)
     const updatedTx = await prisma.transaction.update({
       where: { id: transactionId },
       data: {
