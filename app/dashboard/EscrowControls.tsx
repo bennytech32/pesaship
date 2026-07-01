@@ -12,7 +12,8 @@ export default function EscrowControls({ id, status, amount, isBuyer }: { id: st
      if (isBuyer) {
         return (
            <button
-             onClick={() => startTransition(() => markAsDeposited(id))}
+             // TUMEWEKA MABANO { } HAPA ILI KUTATUA KOSA LA TYPESCRIPT
+             onClick={() => startTransition(() => { markAsDeposited(id); })}
              disabled={isPending}
              className="bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 w-full md:w-auto shadow-lg shadow-green-200"
            >
