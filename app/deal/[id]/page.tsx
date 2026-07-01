@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/options";
+import { authOptions } from "@/lib/auth"; // Njia sahihi ya auth
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { 
@@ -12,6 +12,9 @@ import CopyButton from "./CopyButton";
 import { markAsShipped } from "@/app/actions/markAsShipped";
 import { acceptItem } from "@/app/actions/acceptItem"; 
 import { rejectItem } from "@/app/actions/rejectItem"; 
+
+// TUNAVUTA ILE FOMU YETU YA MALIPO YENYE NAMBA YA SIMU
+import EscrowControls from "@/app/dashboard/EscrowControls";
 
 export default async function DealPreview({ params }: { params: Promise<{ id: string }> }) {
   // Await params for Next.js 15+
@@ -106,7 +109,7 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
                   tx.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
                   tx.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                   tx.status === 'SHIPPED' ? 'bg-purple-100 text-purple-700' :
-                  tx.status === 'PAID' ? 'bg-blue-100 text-blue-700' :
+                  (tx.status === 'PAID' || tx.status === 'PENDING' || tx.status === 'AWAITING_PAYMENT') ? 'bg-blue-100 text-blue-700' :
                   'bg-amber-100 text-amber-700'
                 }`}>
                   {tx.status.replace('_', ' ')}
@@ -120,13 +123,13 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
               tx.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
               tx.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
               tx.status === 'SHIPPED' ? 'bg-purple-50 text-purple-600' :
-              tx.status === 'PAID' ? 'bg-blue-50 text-blue-600' :
+              (tx.status === 'PAID' || tx.status === 'PENDING' || tx.status === 'AWAITING_PAYMENT') ? 'bg-blue-50 text-blue-600' :
               'bg-slate-50 text-slate-400'
             }`}>
               {tx.status === 'COMPLETED' ? <CheckCircle2 className="w-8 h-8" /> :
                tx.status === 'REJECTED' ? <XCircle className="w-8 h-8" /> :
                tx.status === 'SHIPPED' ? <Truck className="w-8 h-8" /> : 
-               tx.status === 'PAID' ? <Lock className="w-8 h-8" /> : 
+               (tx.status === 'PAID' || tx.status === 'PENDING' || tx.status === 'AWAITING_PAYMENT') ? <Lock className="w-8 h-8" /> : 
                <Clock className="w-8 h-8" />}
             </div>
           </div>
@@ -149,9 +152,7 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* ========================================= */}
-          {/* DISPUTE BANNER (Shows if REJECTED)          */}
-          {/* ========================================= */}
+          {/* DISPUTE BANNER */}
           {tx.status === 'REJECTED' && (
             <div className="mb-8 p-5 bg-red-50 border border-red-100 rounded-2xl">
               <div className="flex items-center gap-2 text-red-800 font-black mb-2">
@@ -166,33 +167,30 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
           )}
 
           {/* ========================================= */}
-          {/* BUYER: PAY / LOCK FUNDS                   */}
+          {/* BUYER: FOMU YA MALIPO INAKAA HAPA         */}
           {/* ========================================= */}
-          {isBuyer && tx.status === 'AWAITING_PAYMENT' && !partnerMissing && (
+          {isBuyer && (tx.status === 'AWAITING_PAYMENT' || tx.status === 'PENDING') && !partnerMissing && (
             <div className="mb-8 border-t border-slate-100 pt-8">
-              <Link 
-                href={`/checkout/${tx.id}`}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 hover:scale-[1.02] transition-transform"
-              >
-                Lock Funds Securely <Lock className="w-5 h-5" />
-              </Link>
+              <h3 className="text-lg font-black text-slate-900 mb-4">Make Payment</h3>
+              <p className="text-sm text-slate-500 mb-4">Weka namba ya simu kukamilisha malipo na kufungia pesa salama.</p>
+              
+              {/* Tunatumia EscrowControls na kulazimisha ifikirie status ni PENDING ili ionyeshe fomu */}
+              <EscrowControls id={tx.id} status="PENDING" amount={tx.amount} isBuyer={isBuyer} />
             </div>
           )}
 
           {/* ========================================= */}
           {/* SELLER: WAITING FOR BUYER TO PAY          */}
           {/* ========================================= */}
-          {isSeller && tx.status === 'AWAITING_PAYMENT' && !partnerMissing && (
+          {isSeller && (tx.status === 'AWAITING_PAYMENT' || tx.status === 'PENDING') && !partnerMissing && (
             <div className="mb-8 border-t border-slate-100 pt-8 text-center bg-blue-50 p-6 rounded-2xl">
               <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2 animate-pulse" />
               <h3 className="font-bold text-blue-900">Waiting for Buyer</h3>
-              <p className="text-sm text-blue-700 mt-1">Do not ship the item yet. We are waiting for the buyer to lock the funds in escrow.</p>
+              <p className="text-sm text-blue-700 mt-1">Do not ship the item yet. We are waiting for the buyer to enter their phone number and lock the funds in escrow.</p>
             </div>
           )}
 
-          {/* ========================================= */}
-          {/* SELLER: MARK AS SHIPPED                   */}
-          {/* ========================================= */}
+          {/* SELLER: MARK AS SHIPPED */}
           {isSeller && tx.status === 'PAID' && (
             <div className="mb-8 border-t border-slate-100 pt-8">
               <form action={handleShip}>
@@ -206,9 +204,7 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          {/* ========================================= */}
-          {/* BUYER: WAITING FOR SELLER TO SHIP         */}
-          {/* ========================================= */}
+          {/* BUYER: WAITING FOR SELLER TO SHIP */}
           {isBuyer && tx.status === 'PAID' && (
             <div className="mb-8 border-t border-slate-100 pt-8 text-center bg-purple-50 p-6 rounded-2xl border border-purple-100">
               <Truck className="w-8 h-8 text-purple-500 mx-auto mb-2 animate-pulse" />
@@ -217,9 +213,7 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          {/* ========================================= */}
-          {/* BUYER: ACCEPT OR REJECT DELIVERY          */}
-          {/* ========================================= */}
+          {/* BUYER: ACCEPT OR REJECT DELIVERY */}
           {isBuyer && tx.status === 'SHIPPED' && (
             <div className="mb-8 border-t border-slate-100 pt-8">
               <h3 className="text-lg font-black text-slate-900 mb-4">Confirm Delivery</h3>
@@ -250,9 +244,7 @@ export default async function DealPreview({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          {/* ========================================= */}
-          {/* SELLER: WAITING FOR BUYER TO ACCEPT       */}
-          {/* ========================================= */}
+          {/* SELLER: WAITING FOR BUYER TO ACCEPT */}
           {isSeller && tx.status === 'SHIPPED' && (
             <div className="mb-8 border-t border-slate-100 pt-8 text-center bg-green-50 p-6 rounded-2xl border border-green-100">
               <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2 animate-pulse" />

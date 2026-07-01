@@ -1,19 +1,17 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/options";
+// 1. TUMEWEKA NJIA SAHIHI YA AUTHOPTIONS HAPA
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ShieldCheck, Lock, AlertCircle, ArrowRight, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { joinTransaction } from "@/app/actions/joinTransaction";
 
-// 1. UPDATE THE PARAMS TYPE TO A PROMISE
 export default async function JoinDealPage({ params }: { params: Promise<{ id: string }> }) {
-  // 2. AWAIT THE PARAMS TO EXTRACT THE ID SAFELY
   const { id: txId } = await params;
   
   const session = await getServerSession(authOptions);
 
-  // 3. Fetch the transaction securely using the awaited txId
   const tx = await prisma.transaction.findUnique({
     where: { id: txId },
     include: {
@@ -35,14 +33,14 @@ export default async function JoinDealPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  // 4. Determine which role needs to be filled
+  // Determine which role needs to be filled
   const isBuyerMissing = !tx.buyerId;
   const isSellerMissing = !tx.sellerId;
   const isFull = tx.buyerId && tx.sellerId;
   const missingRole = isBuyerMissing ? 'Buyer' : 'Seller';
   const creatorName = isBuyerMissing ? tx.seller?.fullName : tx.buyer?.fullName;
 
-  // 5. Check if the current logged-in user is ALREADY part of the deal
+  // Check if the current logged-in user is ALREADY part of the deal
   let userDbId = null;
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({ 
@@ -53,15 +51,9 @@ export default async function JoinDealPage({ params }: { params: Promise<{ id: s
   }
 
   if (userDbId && (tx.buyerId === userDbId || tx.sellerId === userDbId)) {
-    // If the creator clicks their own link, send them straight to the management view
+    // Kama tayari yumo, mpeleke moja kwa moja kwenye ukurasa wa Deal
     redirect(`/deal/${txId}`);
   }
-
-  // 6. Inline Server Action for the "Accept" button
-  const handleJoin = async () => {
-    "use server";
-    await joinTransaction(txId);
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 py-20 px-6 flex items-center justify-center">
@@ -127,7 +119,11 @@ export default async function JoinDealPage({ params }: { params: Promise<{ id: s
             </div>
           ) : (
             // LOGGED IN -> Show the final Join button
-            <form action={handleJoin}>
+            // 2. TUMEWEKA ASYNC ARROW FUNCTION KUZUIA TYPESCRIPT ERROR NA KUFANYA REDIRECT IFANYE KAZI
+            <form action={async (formData) => {
+              "use server";
+              await joinTransaction(txId);
+            }}>
               <button 
                 type="submit"
                 className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 hover:scale-[1.02] transition-transform active:scale-95"
