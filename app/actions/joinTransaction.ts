@@ -3,8 +3,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation"; // TUMEIONGEZA HII
 
 export async function joinTransaction(transactionId: string) {
+  let isSuccess = false; // Tunatumia hii kujua kama limekamilika salama
+
   try {
     // 1. Hakikisha mnunuzi amefanya login
     const session = await auth();
@@ -53,13 +56,20 @@ export async function joinTransaction(transactionId: string) {
       },
     });
 
-    revalidatePath(`/tx/${transactionId}`);
+    // Safisha cache zote muhimu
+    revalidatePath(`/deal/${transactionId}`);
     revalidatePath("/dashboard/buyer");
 
-    return { success: true, message: "Successfully joined the escrow deal!" };
+    // Tunaruhusu mfumo kujua imefaulu ili tufanye Redirect huko chini
+    isSuccess = true;
 
   } catch (error: any) {
     console.error("JOIN TRANSACTION ERROR:", error);
     return { success: false, error: "Something went wrong. Please try again." };
+  }
+
+  // 5. REDIRECT LAZIMA IKAE NJE YA TRY...CATCH (HII NDIYO SIRI)
+  if (isSuccess) {
+    redirect(`/deal/${transactionId}`); 
   }
 }
