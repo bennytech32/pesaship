@@ -21,7 +21,8 @@ export default function LandingPage() {
             <a href="#how-it-works" className="hover:text-blue-600 transition">How it Works</a>
             <a href="#testimonials" className="hover:text-blue-600 transition">Reviews</a>
             <Link href="/login" className="hover:text-blue-600 transition">Log In</Link>
-            <Link href="/create" className="bg-slate-900 text-white px-6 py-2.5 rounded-full hover:bg-slate-800 transition font-semibold shadow-md">
+            {/* LINK IMEBADILISHWA KWENDA /role */}
+            <Link href="/role" className="bg-slate-900 text-white px-6 py-2.5 rounded-full hover:bg-slate-800 transition font-semibold shadow-md">
               Start Transaction
             </Link>
           </div>
@@ -52,7 +53,8 @@ export default function LandingPage() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link href="/create" className="px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-xl shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
+              {/* LINK IMEBADILISHWA KWENDA /role */}
+              <Link href="/role" className="px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-xl shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
                 Start Secure Transfer <ArrowRight className="w-5 h-5" />
               </Link>
               <button className="px-8 py-4 bg-white text-slate-700 text-lg font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition flex items-center justify-center gap-2">
@@ -320,7 +322,8 @@ export default function LandingPage() {
             <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">
               Join thousands of Tanzanians who trust PesaShip for their daily transactions. No signup fees.
             </p>
-            <Link href="/create" className="inline-block bg-white text-blue-600 px-10 py-4 rounded-full font-bold text-lg hover:bg-blue-50 transition shadow-xl transform hover:-translate-y-1">
+            {/* LINK IMEBADILISHWA KWENDA /role */}
+            <Link href="/role" className="inline-block bg-white text-blue-600 px-10 py-4 rounded-full font-bold text-lg hover:bg-blue-50 transition shadow-xl transform hover:-translate-y-1">
               Start Your First Escrow
             </Link>
           </div>

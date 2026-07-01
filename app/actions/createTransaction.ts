@@ -1,67 +1,71 @@
-'use server';
+"use server";
 
-import { PrismaClient } from '@prisma/client';
-import { getServerSession } from "next-auth";
-import { authOptions } from "../auth"; 
-import { redirect } from "next/navigation";
-import { revalidatePath } from 'next/cache';
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
-const prisma = new PrismaClient();
-
-/**
- * Creates a new Escrow Transaction in Neon Postgres
- * and redirects the user to their Dashboard.
- */
 export async function createTransaction(formData: FormData) {
-  // 1. Get current session
-  const session = await getServerSession(authOptions);
-  
-  if (!session || !session.user) {
-    throw new Error("You must be logged in to create a transaction.");
-  }
-
-  // 2. Extract and Validate Form Data
-  const userId = (session.user as any).id;
-  const description = formData.get('description') as string;
-  const rawAmount = formData.get('amount') as string;
-  const role = formData.get('role') as string;
-
-  if (!description || !rawAmount || !role) {
-    throw new Error("Please fill in all fields.");
-  }
-
-  const amount = parseFloat(rawAmount);
-  
-  // 3. Fee Calculation (2.5% as per PesaShip landing page)
-  const fee = amount * 0.025;
-  
-  // Rule: If Buyer creates, they pay the fee on top. 
-  // If Seller creates, the fee is deducted from what they eventually receive.
-  const total = role === 'buyer' ? amount + fee : amount;
-
   try {
-    // 4. Save to Neon Database
-    await prisma.transaction.create({
+    // 1. Hakikisha mtumiaji ameingia (Logged in)
+    const session = await auth();
+    if (!session || !session.user?.email) {
+      return { success: false, error: "Tafadhali ingia kwenye akaunti kwanza (Login)." };
+    }
+
+    // 2. Mtafute muuzaji kwenye Neon DB
+    const seller = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!seller || seller.role !== "SELLER") {
+      return { success: false, error: "Akaunti za wauzaji pekee ndizo zinazoweza kutengeneza link ya malipo." };
+    }
+
+    // 3. Daka taarifa kutoka kwenye fomu ya /create
+    const amountStr = formData.get("amount") as string;
+    const description = formData.get("description") as string;
+    // (Email ya mnunuzi tunaweza kuiacha kwa sasa, maana atajiunga kwa kubonyeza link)
+    
+    if (!amountStr || !description) {
+      return { success: false, error: "Tafadhali jaza kiasi na maelezo ya biashara." };
+    }
+
+    const amount = parseFloat(amountStr);
+    if (amount < 1000) {
+      return { success: false, error: "Kiasi cha chini cha muamala ni TZS 1,000." };
+    }
+
+    // 4. Piga hesabu za makato (2.5% Escrow Fee)
+    const fee = amount * 0.025; 
+    const total = amount; 
+
+    // 5. Tengeneza muamala kwenye kanzidata (Neon)
+    const newTx = await prisma.transaction.create({
       data: {
         description,
         amount,
         fee,
         total,
-        status: "PENDING",
-        buyerId: role === 'buyer' ? userId : null,
-        sellerId: role === 'seller' ? userId : null,
+        status: "AWAITING_PAYMENT",
+        sellerId: seller.id,
+        // MUHIMU SANA: Hatuweki buyerId hapa. Mnunuzi atajiunga akibonyeza link!
       }
     });
 
-    // 5. Clear Cache so the Dashboard shows the new deal immediately
-    revalidatePath('/dashboard');
+    // 6. Fanya refresh ya dashboard ili ionyeshe muamala mpya mara moja
+    revalidatePath("/dashboard/seller");
 
-  } catch (error) {
-    console.error("Database Save Error:", error);
-    // In a real app, you might return an error object here
-    throw new Error("Failed to save transaction to database.");
+    return { 
+      success: true, 
+      transactionId: newTx.id,
+      message: "Link imetengenezwa kikamilifu!" 
+    };
+
+  } catch (error: any) {
+    console.error("KOSA LA KUTENGENEZA MUAMALA:", error);
+    return { 
+      success: false, 
+      error: "Kuna changamoto ya kimtandao. Tafadhali jaribu tena." 
+    };
   }
-
-  // 6. Send them home
-  redirect('/dashboard');
 }

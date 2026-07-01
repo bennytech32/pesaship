@@ -1,3 +1,6 @@
+// This is your PesaShip Prisma schema file
+// Optimized for Next.js 15+ and Neon Postgres
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,29 +11,70 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Tengeneza orodha ya aina za watumiaji (Mnunuzi au Muuzaji)
+enum Role {
+  BUYER
+  SELLER
+}
+
+// 1. USER MODEL (With KYC Security & Roles)
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   fullName  String?
-  phone     String?
-  password  String?
+  phone     String?  @unique
+  password  String   // Hashed with bcrypt
+  role      Role     @default(BUYER) // Imeongezwa hapa kutofautisha watumiaji
   
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // KYC & Verification Fields
+  isVerified  Boolean  @default(false)
+  nidaNumber  String?  @unique // National ID for Tanzania
+  idPhotoUrl  String?  // URL to stored image of ID card (e.g., on Uploadthing or S3)
+  kycStatus   String   @default("NOT_STARTED") // NOT_STARTED, PENDING, VERIFIED, REJECTED
+  
+  // Relationships
+  // One user can be a buyer in many deals and a seller in many deals
+  buyingTransactions  Transaction[] @relation("BuyerRelation")
+  sellingTransactions Transaction[] @relation("SellerRelation")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
+// 2. TRANSACTION MODEL (With Rejection & Dispute Logic)
 model Transaction {
-  id          String   @id @default(cuid())
-  description String
-  amount      Float
-  fee         Float
-  total       Float
-  status      String   @default("PENDING")
+  id              String   @id @default(cuid())
+  description     String
+  amount          Float
+  fee             Float    @default(0)
+  total           Float    @default(0)
   
-  // These are optional so a deal can be created before the partner joins
-  buyerId     String?  
-  sellerId    String?  
+  // SECURE STATUS FLOW
+  // AWAITING_PAYMENT -> PAID (Funds Locked) -> SHIPPED -> COMPLETED
+  // If issues arise: SHIPPED -> REJECTED -> DISPUTED
+  status          String   @default("AWAITING_PAYMENT")
+  
+  // Dispute Handling
+  rejectionReason String?  // Explanation if buyer clicks "Reject"
+  disputeNotes    String?  // Internal notes for PesaShip Admins
+  
+  // Participants
+  buyerId         String?
+  buyer           User?    @relation("BuyerRelation", fields: [buyerId], references: [id])
+  
+  sellerId        String?
+  seller          User?    @relation("SellerRelation", fields: [sellerId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// 3. AUDIT LOG (Security Tracking)
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // e.g., "KYC_APPROVED", "FUNDS_RELEASED", "DISPUTE_OPENED"
+  adminId     String?
+  targetId    String   // The ID of the User or Transaction involved
+  details     String?  // JSON string or text describing the change
+  timestamp   DateTime @default(now())
 }
