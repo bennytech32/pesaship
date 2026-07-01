@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/options";
+// TUMEWEKA NJIA SAHIHI YA AUTHOPTIONS
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ShieldCheck, UserCheck, ArrowLeft, Fingerprint } from 'lucide-react';
@@ -47,7 +48,11 @@ export default async function KycPage() {
             To comply with Tanzanian financial regulations and unlock withdrawals, please provide your National ID (NIDA) number.
           </p>
 
-          <form action={submitKyc} className="space-y-6 text-left">
+          {/* TUMEWEKA ASYNC ARROW FUNCTION HAPA */}
+          <form action={async (formData) => {
+            "use server";
+            await submitKyc(formData);
+          }} className="space-y-6 text-left">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">NIDA Number</label>
               <div className="relative">
