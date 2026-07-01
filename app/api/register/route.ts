@@ -1,78 +1,62 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs"; 
+import bcrypt from "bcryptjs"; // Hapa ndipo penye siri ya kutoboa Railway!
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // Tumepokea phone hapa
-    const { email, phone, password, role } = body;
+    const { fullName, email, password, phone, role } = body;
 
-    // 1. Hakikisha taarifa zote zimejazwa (Ikiwemo namba ya simu)
-    if (!email || !phone || !password || !role) {
+    // 1. Uhakiki (Validation) wa awali
+    if (!fullName || !email || !password) {
       return NextResponse.json(
-        { error: "Please provide your email, phone number, password, and role." }, 
+        { success: false, error: "Tafadhali jaza taarifa zote muhimu (Jina, Email, Nywila)." },
         { status: 400 }
       );
     }
 
-    if (role !== "BUYER" && role !== "SELLER") {
-      return NextResponse.json(
-        { error: "Account role must be BUYER or SELLER." }, 
-        { status: 400 }
-      );
-    }
-
-    // 2. Angalia kama email tayari imeshasajiliwa
+    // 2. Angalia kama mtumiaji yupo tayari kwenye mfumo
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase() },
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "This email is already in use by another account." }, 
-        { status: 400 }
+        { success: false, error: "Akaunti yenye email hii inatumika tayari. Tafadhali nenda kwenye Login." },
+        { status: 409 }
       );
     }
 
-    // 3. Angalia kama namba ya simu tayari imetumika
-    const existingPhone = await prisma.user.findUnique({
-      where: { phone },
-    });
+    // 3. Ficha neno la siri (Hash password) salama kabisa
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    if (existingPhone) {
-      return NextResponse.json(
-        { error: "This phone number is already registered." }, 
-        { status: 400 }
-      );
-    }
-
-    // 4. Ficha Password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 5. Hifadhi Mtumiaji Mpya kwenye Neon DB
+    // 4. Tengeneza mtumiaji mpya kwenye Database (Neon)
     const newUser = await prisma.user.create({
       data: {
-        email,
-        phone, // Inahifadhi namba ya simu
+        fullName,
+        email: email.toLowerCase(),
         password: hashedPassword,
-        role,
+        phone: phone || null,
+        role: role || "BUYER", // 'BUYER' inakuwa default kama haijachaguliwa
       },
     });
 
-    // 6. Ondoa password kwenye majibu kwa usalama
-    const { password: _, ...userWithoutPassword } = newUser;
+    // 5. Tunaficha nywila isirudi kwenye majibu (Response) kwa usalama
+    const { password: _, ...safeUser } = newUser;
 
     return NextResponse.json(
-      { success: true, message: "Account created successfully!", user: userWithoutPassword }, 
+      { 
+        success: true, 
+        message: "Akaunti yako imetengenezwa kikamilifu!", 
+        user: safeUser 
+      },
       { status: 201 }
     );
 
-  } catch (error: any) {
-    console.error("REGISTRATION ERROR:", error);
-    
+  } catch (error) {
+    console.error("REGISTER API ERROR:", error);
     return NextResponse.json(
-      { error: "Failed to register. The server encountered an issue." }, 
+      { success: false, error: "Kuna hitilafu kwenye server. Tafadhali jaribu tena baadaye." },
       { status: 500 }
     );
   }
