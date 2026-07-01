@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth"; // <--- Tunatumia njia hii safi badala ya authOptions
+import { auth } from "@/lib/auth"; // Tumia hii tu, achana na authOptions
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    // 1. Hakikisha mtumiaji amesha-login
     const session = await auth();
 
     if (!session || !session.user?.email) {
@@ -14,7 +13,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Pokea Transaction ID kutoka kwenye Request Body
     const body = await req.json();
     const { transactionId } = body;
 
@@ -25,7 +23,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Mtafute Mnunuzi kwenye Database
     const buyerUser = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
@@ -37,7 +34,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Vuta taarifa za Muamala husika
     const tx = await prisma.transaction.findUnique({
       where: { id: transactionId },
     });
@@ -49,7 +45,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 5. Ulinzi: Hakikisha huyu ndiye mnunuzi halali aliyeunganishwa na muamala
     if (tx.buyerId !== buyerUser.id) {
       return NextResponse.json(
         { success: false, error: "Huna ruhusa ya kulipia muamala huu." },
@@ -57,7 +52,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6. Hakikisha muamala haujalipiwa tayari
     if (tx.status !== "AWAITING_PAYMENT") {
       return NextResponse.json(
         { success: false, error: "Muamala huu umeshalipiwa au umefungwa." },
@@ -65,7 +59,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 7. FANYA MALIPO (Badilisha status kuwa PAID)
     const updatedTx = await prisma.transaction.update({
       where: { id: transactionId },
       data: {
