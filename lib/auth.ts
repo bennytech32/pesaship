@@ -1,13 +1,71 @@
-import { getServerSession, NextAuthOptions } from "next-auth";
+import { NextAuthOptions, getServerSession } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma"; 
+import bcrypt from "bcryptjs"; // Tumegeuza hapa kuwa bcryptjs
 
-// Hapa ndipo unapoweka mipangilio yako ya Login (Google, Credentials, n.k.)
 export const authOptions: NextAuthOptions = {
   providers: [
-    // Weka providers wako hapa baadaye
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Tafadhali jaza email na neno la siri.");
+        }
+        
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        });
+        
+        if (!user || !user.password) {
+          throw new Error("Akaunti haijapatikana.");
+        }
+        
+        // Tunatumia bcryptjs kulinganisha nywila (password)
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+        
+        if (!isPasswordValid) {
+          throw new Error("Neno la siri sio sahihi.");
+        }
+        
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.fullName,
+          role: user.role,
+        };
+      }
+    })
   ],
+  session: { 
+    strategy: "jwt", 
+    maxAge: 30 * 24 * 60 * 60 // Siku 30
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+      }
+      return session;
+    }
+  },
+  pages: { 
+    signIn: "/login", 
+    error: "/login" 
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Hii inatengeneza function ya 'auth()' ambayo kurasa zako zinaitafuta!
-export function auth() {
-  return getServerSession(authOptions);
-}
+// Hii inatusaidia kuvuta session kiurahisi kwenye API na Server Components
+export const auth = () => getServerSession(authOptions);
