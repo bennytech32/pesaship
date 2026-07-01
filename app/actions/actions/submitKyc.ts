@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../api/auth/options";
+import { authOptions } from "@/lib/auth"; // <-- Njia sahihi tumeweka hapa
 import { redirect } from "next/navigation";
 import { revalidatePath } from 'next/cache';
 
@@ -10,16 +10,16 @@ export async function submitKyc(formData: FormData) {
   const session = await getServerSession(authOptions);
   
   if (!session || !session.user?.email) {
-    throw new Error("Unauthorized");
+    throw new Error("Unauthorized: Tafadhali ingia kwenye akaunti kwanza.");
   }
 
   const nidaNumber = formData.get('nidaNumber') as string;
 
   if (!nidaNumber || nidaNumber.length < 10) {
-    throw new Error("Invalid NIDA Number");
+    throw new Error("Namba ya NIDA sio sahihi. Tafadhali hakiki tena.");
   }
 
-  // Find the user and update their status to PENDING
+  // Tunamtafuta mtumiaji na kubadilisha hadhi yake kuwa PENDING (Inasubiri)
   await prisma.user.update({
     where: { email: session.user.email },
     data: { 
@@ -28,7 +28,7 @@ export async function submitKyc(formData: FormData) {
     }
   });
 
-  // Clear cache and send them back to the dashboard
+  // Tunasafisha cache ili mabadiliko yaonekane mara moja, kisha tunamrudisha Dashboard
   revalidatePath('/dashboard');
   revalidatePath('/admin');
   redirect('/dashboard');
