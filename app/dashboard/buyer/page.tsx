@@ -176,8 +176,11 @@ export default async function BuyerDashboard() {
                       <td className="p-4 text-right">
                         {tx.status === "PAID" || tx.status === "SHIPPED" ? (
                           <div className="flex justify-end gap-2">
-                            {/* Form ya Dispute */}
-                            <form action={openDispute.bind(null, tx.id)}>
+                            {/* TUMEWEKA ASYNC ARROW FUNCTION KUZUIA TYPESCRIPT ERROR YENYE 'VOID' */}
+                            <form action={async () => {
+                              "use server";
+                              await openDispute(tx.id);
+                            }}>
                               <button 
                                 type="submit" 
                                 className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 transition flex items-center gap-1"
@@ -186,8 +189,11 @@ export default async function BuyerDashboard() {
                               </button>
                             </form>
 
-                            {/* Form ya Kuachia Pesa */}
-                            <form action={releaseFunds.bind(null, tx.id)}>
+                            {/* TUMEWEKA ASYNC ARROW FUNCTION HAPA PIA */}
+                            <form action={async () => {
+                              "use server";
+                              await releaseFunds(tx.id);
+                            }}>
                               <button 
                                 type="submit" 
                                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm shadow-green-100 transition flex items-center gap-1"
